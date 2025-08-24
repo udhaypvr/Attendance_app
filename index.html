@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance Tracker</title>
+    <!-- Changed this link to a local file -->
+    <link href="tailwind.css" rel="stylesheet">
+    <style>
+        body {
+            /* Removed Google Font and using system default */
+            font-family: sans-serif;
+        }
+        /* Custom scrollbar for a cleaner look */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .status-message {
+            animation: fadeInOut 3s ease-in-out forwards;
+        }
+        @keyframes fadeInOut {
+            0%, 100% { opacity: 0; transform: translateY(10px); }
+            10%, 90% { opacity: 1; transform: translateY(0); }
+        }
+        /* Style for date input */
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            cursor: pointer;
+            filter: invert(0.5) brightness(0.8);
+        }
+        .dark input[type="date"]::-webkit-calendar-picker-indicator {
+             filter: invert(1) brightness(0.8);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 min-h-screen flex items-center justify-center p-4">
+
+    <div class="w-full max-w-md mx-auto bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
+        <header class="p-6 bg-blue-600 dark:bg-blue-700 text-white">
+            <h1 class="text-2xl font-bold">Attendance Tracker</h1>
+            <p class="text-blue-200 text-sm mt-1">Select a date and period to track attendance.</p>
+        </header>
+
+        <main class="p-6">
+            <!-- Date and Period Selection -->
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div>
+                    <label for="attendanceDate" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date</label>
+                    <input type="date" id="attendanceDate" class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+                </div>
+                <div>
+                    <label for="attendancePeriod" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Period</label>
+                    <select id="attendancePeriod" class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+                        <option value="1">Period 1</option>
+                        <option value="2">Period 2</option>
+                        <option value="3">Period 3</option>
+                        <option value="4">Period 4</option>
+                        <option value="5">Period 5</option>
+                        <option value="6">Period 6</option>
+                        <option value="7">Period 7</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Form to add new students to the roster -->
+            <div class="flex gap-3 mb-6">
+                <input type="text" id="studentName" placeholder="Add student to roster..." class="flex-grow bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+                <button id="addStudentBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition duration-300 transform hover:scale-105">Add</button>
+            </div>
+
+            <!-- Student list -->
+            <div id="studentListContainer" class="max-h-64 overflow-y-auto pr-2">
+                <ul id="studentList" class="space-y-3">
+                    <!-- Student items will be dynamically added here -->
+                </ul>
+            </div>
+             <!-- Status Message Area -->
+            <div id="statusMessage" class="mt-4 text-center text-green-600 dark:text-green-400 font-medium"></div>
+        </main>
+
+        <footer class="p-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-200 dark:border-gray-700">
+            <div class="flex justify-between items-center mb-3">
+                 <button id="saveChangesBtn" disabled class="w-full bg-green-600 text-white font-semibold px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed">Save Changes</button>
+            </div>
+            <div class="grid grid-cols-3 gap-2 text-sm">
+                 <button id="importDataBtn" class="bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 font-semibold px-3 py-2 rounded-lg transition">Import Data</button>
+                 <input type="file" id="importFile" class="hidden" accept=".json">
+                 <button id="exportDataBtn" class="bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 font-semibold px-3 py-2 rounded-lg transition">Export Data</button>
+                 <button id="resetRosterBtn" class="bg-red-500 hover:bg-red-600 text-white font-semibold px-3 py-2 rounded-lg transition">Reset Roster</button>
+            </div>
+        </footer>
+    </div>
+    
+    <!-- Custom Modal for Confirmation -->
+    <div id="confirmationModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50 p-4">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm text-center">
+            <h2 class="text-lg font-bold mb-4" id="modalTitle">Are you sure?</h2>
+            <p class="text-gray-600 dark:text-gray-400 mb-6" id="modalMessage">This action cannot be undone.</p>
+            <div class="flex justify-center gap-4">
+                <button id="modalCancelBtn" class="px-6 py-2 rounded-lg bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 font-semibold">Cancel</button>
+                <button id="modalConfirmBtn" class="px-6 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 font-semibold">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // DOM Elements
+            const studentNameInput = document.getElementById('studentName');
+            const addStudentBtn = document.getElementById('addStudentBtn');
+            const studentList = document.getElementById('studentList');
+            const resetRosterBtn = document.getElementById('resetRosterBtn');
+            const dateInput = document.getElementById('attendanceDate');
+            const periodSelect = document.getElementById('attendancePeriod');
+            const saveChangesBtn = document.getElementById('saveChangesBtn');
+            const exportDataBtn = document.getElementById('exportDataBtn');
+            const importDataBtn = document.getElementById('importDataBtn');
+            const importFileInput = document.getElementById('importFile');
+            const statusMessage = document.getElementById('statusMessage');
+
+            // Local Storage Keys
+            const ROSTER_KEY = 'attendanceRoster';
+            const RECORDS_KEY = 'attendanceRecords';
+
+            // Modal elements
+            const confirmationModal = document.getElementById('confirmationModal');
+            const modalConfirmBtn = document.getElementById('modalConfirmBtn');
+            const modalCancelBtn = document.getElementById('modalCancelBtn');
+            let confirmAction = null;
+
+            // --- Modal Logic ---
+            const showModal = (title, message, onConfirm) => {
+                document.getElementById('modalTitle').textContent = title;
+                document.getElementById('modalMessage').textContent = message;
+                confirmationModal.classList.remove('hidden');
+                confirmAction = onConfirm;
+            };
+            const hideModal = () => {
+                confirmationModal.classList.add('hidden');
+                confirmAction = null;
+            };
+            modalConfirmBtn.addEventListener('click', () => {
+                if (confirmAction) confirmAction();
+                hideModal();
+            });
+            modalCancelBtn.addEventListener('click', hideModal);
+
+            // --- Status Message ---
+            let statusTimeout;
+            const showStatus = (message, isError = false) => {
+                clearTimeout(statusTimeout);
+                statusMessage.textContent = message;
+                statusMessage.className = `mt-4 text-center font-medium ${isError ? 'text-red-500' : 'text-green-500 dark:text-green-400'} status-message`;
+                statusTimeout = setTimeout(() => {
+                    statusMessage.textContent = '';
+                }, 3000);
+            };
+
+            // --- Data Functions ---
+            const getRoster = () => JSON.parse(localStorage.getItem(ROSTER_KEY)) || [];
+            const saveRoster = (roster) => localStorage.setItem(ROSTER_KEY, JSON.stringify(roster));
+            const getRecords = () => JSON.parse(localStorage.getItem(RECORDS_KEY)) || {};
+            const saveRecords = (records) => localStorage.setItem(RECORDS_KEY, JSON.stringify(records));
+
+            const initializeRoster = () => {
+                if (getRoster().length === 0) {
+                    const defaultStudents = [];
+                    for (let i = 301; i <= 385; i++) {
+                        defaultStudents.push(String(i));
+                    }
+                    saveRoster(defaultStudents);
+                }
+            };
+            
+            // --- UI Rendering ---
+            const renderStudentList = () => {
+                const roster = getRoster();
+                const records = getRecords();
+                const selectedDate = dateInput.value;
+                const selectedPeriod = periodSelect.value;
+                const attendanceForToday = records[selectedDate]?.[selectedPeriod] || {};
+                
+                studentList.innerHTML = '';
+                roster.forEach(studentName => {
+                    const isPresent = attendanceForToday[studentName] || false;
+                    createStudentElement(studentName, isPresent);
+                });
+                saveChangesBtn.disabled = true; // Disable save button on render
+            };
+
+            const createStudentElement = (name, isPresent) => {
+                const li = document.createElement('li');
+                li.className = 'flex items-center justify-between bg-gray-100 dark:bg-gray-700 p-3 rounded-lg fade-in';
+                li.dataset.studentName = name;
+
+                const studentInfo = document.createElement('div');
+                studentInfo.className = 'flex items-center gap-3';
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = isPresent;
+                checkbox.className = 'h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer';
+                checkbox.addEventListener('change', () => {
+                    saveChangesBtn.disabled = false; // Enable save button on change
+                });
+
+                const span = document.createElement('span');
+                span.textContent = name;
+                span.className = 'text-gray-800 dark:text-gray-200';
+                studentInfo.appendChild(checkbox);
+                studentInfo.appendChild(span);
+
+                const removeBtn = document.createElement('button');
+                removeBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400 hover:text-red-500 transition"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
+                removeBtn.className = 'focus:outline-none';
+                removeBtn.addEventListener('click', () => removeStudentFromRoster(name));
+
+                li.appendChild(studentInfo);
+                li.appendChild(removeBtn);
+                studentList.appendChild(li);
+            };
+
+            // --- Event Handlers & Actions ---
+            const saveCurrentAttendance = () => {
+                const records = getRecords();
+                const selectedDate = dateInput.value;
+                const selectedPeriod = periodSelect.value;
+
+                if (!records[selectedDate]) records[selectedDate] = {};
+                if (!records[selectedDate][selectedPeriod]) records[selectedDate][selectedPeriod] = {};
+
+                studentList.querySelectorAll('li').forEach(item => {
+                    const name = item.dataset.studentName;
+                    const isChecked = item.querySelector('input[type="checkbox"]').checked;
+                    records[selectedDate][selectedPeriod][name] = isChecked;
+                });
+
+                saveRecords(records);
+                saveChangesBtn.disabled = true; // Disable after saving
+                showStatus('Attendance saved successfully!');
+            };
+
+            const addStudentToRoster = () => {
+                const name = studentNameInput.value.trim();
+                if (name) {
+                    const roster = getRoster();
+                    if (!roster.includes(name)) {
+                        roster.push(name);
+                        saveRoster(roster);
+                        renderStudentList();
+                        showStatus(`'${name}' added to the roster.`);
+                    }
+                    studentNameInput.value = '';
+                }
+                studentNameInput.focus();
+            };
+
+            const removeStudentFromRoster = (nameToRemove) => {
+                showModal('Remove Student?', `Remove '${nameToRemove}' from the roster? This removes them from all future attendance lists.`, () => {
+                    let roster = getRoster();
+                    roster = roster.filter(name => name !== nameToRemove);
+                    saveRoster(roster);
+                    renderStudentList();
+                    showStatus(`'${nameToRemove}' removed from the roster.`);
+                });
+            };
+            
+            const exportData = () => {
+                const dataToExport = {
+                    roster: getRoster(),
+                    records: getRecords()
+                };
+                const dataStr = JSON.stringify(dataToExport, null, 2);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(dataBlob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'attendance_data.json';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                showStatus('Data exported successfully.');
+            };
+
+            const importData = (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const importedData = JSON.parse(e.target.result);
+                        if (importedData.roster && importedData.records) {
+                             showModal('Import Data?', 'This will overwrite all existing roster and attendance data. Continue?', () => {
+                                saveRoster(importedData.roster);
+                                saveRecords(importedData.records);
+                                renderStudentList();
+                                showStatus('Data imported successfully!');
+                            });
+                        } else {
+                            throw new Error('Invalid file format.');
+                        }
+                    } catch (error) {
+                        showStatus('Error: Could not import data. Invalid file.', true);
+                    } finally {
+                        // Reset file input to allow re-uploading the same file
+                        importFileInput.value = '';
+                    }
+                };
+                reader.readAsText(file);
+            };
+
+            const setDefaultDate = () => {
+                const today = new Date();
+                dateInput.value = today.toISOString().split('T')[0];
+            };
+
+            // --- Initial Setup & Event Listeners ---
+            addStudentBtn.addEventListener('click', addStudentToRoster);
+            studentNameInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') addStudentToRoster();
+            });
+            saveChangesBtn.addEventListener('click', saveCurrentAttendance);
+            exportDataBtn.addEventListener('click', exportData);
+            importDataBtn.addEventListener('click', () => importFileInput.click());
+            importFileInput.addEventListener('change', importData);
+
+            resetRosterBtn.addEventListener('click', () => {
+                showModal('Reset Roster?', 'This will delete the student roster and ALL saved attendance records, resetting the app to its default state.', () => {
+                    localStorage.removeItem(ROSTER_KEY);
+                    localStorage.removeItem(RECORDS_KEY);
+                    initializeRoster();
+                    renderStudentList();
+                    showStatus('Roster and records have been reset.');
+                });
+            });
+
+            dateInput.addEventListener('change', renderStudentList);
+            periodSelect.addEventListener('change', renderStudentList);
+
+            // --- App Initialization ---
+            setDefaultDate();
+            initializeRoster();
+            renderStudentList();
+        });
+    </script>
+
+</body>
+</html>
